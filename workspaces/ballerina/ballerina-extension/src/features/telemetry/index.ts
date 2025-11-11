@@ -18,6 +18,9 @@
 
 import TelemetryReporter from "vscode-extension-telemetry";
 import { BallerinaExtension } from "../../core";
+import { env } from "vscode";
+import { saveLocalTelemetryEvent, getTelemetryFilePath } from "./local-json-temp";
+
 
 //Ballerina-VSCode-Extention repo key as default
 const DEFAULT_KEY = "3a82b093-5b7b-440c-9aa2-3b8e8e5704e7";
@@ -39,10 +42,24 @@ export function createTelemetryReporter(ext: BallerinaExtension): TelemetryRepor
 
 export function sendTelemetryEvent(extension: BallerinaExtension, eventName: string, componentName: string,
     customDimensions: { [key: string]: string; } = {}, measurements: { [key: string]: number; } = {}) {
+    const telemetryProperties = getAiTelemetryProperties(extension, eventName, componentName, customDimensions);
+
+    // Save to local JSON file for debugging
+    try {
+        saveLocalTelemetryEvent(eventName, telemetryProperties, measurements);
+        console.log(`[Telemetry] Event saved to: ${getTelemetryFilePath()}`);
+    } catch (error) {
+        console.error('[Telemetry] Failed to save event locally:', error);
+    }
+
     // temporarily disabled in codeserver due to GDPR issue
+    // if (extension.isTelemetryEnabled() && !extension.getCodeServerContext().codeServerEnv) {
+    //     extension.telemetryReporter.sendTelemetryEvent(eventName, getTelemetryProperties(extension, componentName,
+    //         customDimensions), measurements);
+    // }
+
     if (extension.isTelemetryEnabled() && !extension.getCodeServerContext().codeServerEnv) {
-        extension.telemetryReporter.sendTelemetryEvent(eventName, getTelemetryProperties(extension, componentName,
-            customDimensions), measurements);
+        extension.telemetryReporter.sendTelemetryEvent(eventName, telemetryProperties, measurements);
     }
 }
 
@@ -70,6 +87,19 @@ export function getTelemetryProperties(extension: BallerinaExtension, component:
         'project': CHOREO_PROJECT_ID,
         'org': CHOREO_ORG_ID,
     };
+}
+
+export function getAiTelemetryProperties(extension: BallerinaExtension, eventName: string, component: string, params: { [key: string]: string; } = {})
+    : { [key: string]: string; } {
+    return {
+        ...params,
+        'ballerina.version': extension ? extension.ballerinaVersion : '',
+        'eventName': eventName,
+        'component': component,
+        'machineId': env.machineId,
+        sessionId: env.sessionId,
+        'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }
 }
 
 export function getMessageObject(message?: string): { [key: string]: string; } {
