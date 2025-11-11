@@ -21,6 +21,8 @@ import { AUTH_CLIENT_ID, AUTH_ORG, AUTH_REDIRECT_URL } from '../../features/ai/u
 import { AIStateMachine } from './aiMachine';
 import { AIMachineEventType, AuthCredentials, LoginMethod } from '@wso2/ballerina-core';
 import { storeAuthCredentials } from '../../utils/ai/auth';
+import { extension } from '../../BalExtensionContext';
+import { sendTelemetryAiEvent, TM_EVENT_BI_COPILOT_LOGIN, CMP_BI_COPILOT_LOGIN } from '../../features/telemetry';
 
 export interface AccessToken {
     accessToken: string;
@@ -83,6 +85,14 @@ export async function exchangeAuthCode(authCode: string) {
                 }
             };
             await storeAuthCredentials(credentials);
+
+            // Send telemetry event for BI Intel login
+            await sendTelemetryAiEvent(
+                extension.ballerinaExtInstance,
+                TM_EVENT_BI_COPILOT_LOGIN,
+                CMP_BI_COPILOT_LOGIN,
+                { loginMethod: LoginMethod.BI_INTEL }
+            );
 
             AIStateMachine.sendEvent(AIMachineEventType.COMPLETE_AUTH);
         } catch (error: any) {

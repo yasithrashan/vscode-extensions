@@ -25,6 +25,7 @@ import { getAuthUrl, getLogoutUrl } from './auth';
 import { extension } from '../../BalExtensionContext';
 import { getAccessToken, clearAuthCredentials, storeAuthCredentials, getLoginMethod } from '../../utils/ai/auth';
 import { getBedrockRegionalPrefix } from '../../features/ai/service/connection';
+import { sendTelemetryAiEvent, TM_EVENT_BI_COPILOT_LOGIN, CMP_BI_COPILOT_LOGIN } from '../../features/telemetry';
 
 const LEGACY_ACCESS_TOKEN_SECRET_KEY = 'BallerinaAIUser';
 const LEGACY_REFRESH_TOKEN_SECRET_KEY = 'BallerinaAIRefreshToken';
@@ -114,6 +115,14 @@ export const validateApiKey = async (apiKey: string, loginMethod: LoginMethod): 
         };
         await storeAuthCredentials(credentials);
 
+        // Send telemetry event for Anthropic API key login
+        await sendTelemetryAiEvent(
+            extension.ballerinaExtInstance,
+            TM_EVENT_BI_COPILOT_LOGIN,
+            CMP_BI_COPILOT_LOGIN,
+            { loginMethod: LoginMethod.ANTHROPIC_KEY }
+        );
+
         return { token: apiKey };
 
     } catch (error) {
@@ -154,7 +163,7 @@ export const validateAwsCredentials = async (credentials: {
 
     // List of valid AWS regions
     const validRegions = [
-        'us-east-1', 'us-west-2', 'us-west-1', 'eu-west-1', 'eu-central-1', 
+        'us-east-1', 'us-west-2', 'us-west-1', 'eu-west-1', 'eu-central-1',
         'ap-southeast-1', 'ap-southeast-2', 'ap-northeast-1', 'ap-northeast-2',
         'ap-south-1', 'ca-central-1', 'sa-east-1', 'eu-west-2', 'eu-west-3',
         'eu-north-1', 'ap-east-1', 'me-south-1', 'af-south-1', 'ap-southeast-3'
@@ -171,13 +180,13 @@ export const validateAwsCredentials = async (credentials: {
             secretAccessKey: secretAccessKey,
             sessionToken: sessionToken,
         });
-        
+
         // Get regional prefix based on AWS region and construct model ID
         const regionalPrefix = getBedrockRegionalPrefix(region);
         const modelId = `${regionalPrefix}.anthropic.claude-3-5-haiku-20241022-v1:0`;
         const bedrockClient = bedrock(modelId);
 
-        // Make a minimal test call to validate credentials  
+        // Make a minimal test call to validate credentials
         await generateText({
             model: bedrockClient,
             maxOutputTokens: 1,
@@ -195,6 +204,14 @@ export const validateAwsCredentials = async (credentials: {
             }
         };
         await storeAuthCredentials(authCredentials);
+
+        // Send telemetry event for AWS Bedrock login
+        await sendTelemetryAiEvent(
+            extension.ballerinaExtInstance,
+            TM_EVENT_BI_COPILOT_LOGIN,
+            CMP_BI_COPILOT_LOGIN,
+            { loginMethod: LoginMethod.AWS_BEDROCK }
+        );
 
         return { token: accessKeyId };
 

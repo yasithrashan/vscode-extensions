@@ -20,6 +20,7 @@ import TelemetryReporter from "vscode-extension-telemetry";
 import { BallerinaExtension } from "../../core";
 import { env } from "vscode";
 import { saveLocalTelemetryEvent, getTelemetryFilePath } from "./local-json-temp";
+import { getUserObject } from "./ai-telemetry";
 
 
 //Ballerina-VSCode-Extention repo key as default
@@ -40,28 +41,31 @@ export function createTelemetryReporter(ext: BallerinaExtension): TelemetryRepor
     return reporter;
 }
 
-export function sendTelemetryEvent(extension: BallerinaExtension, eventName: string, componentName: string,
+export async function sendTelemetryEvent(extension: BallerinaExtension, eventName: string, componentName: string,
+    customDimensions: { [key: string]: string; } = {}, measurements: { [key: string]: number; } = {}) {
+    // temporarily disabled in codeserver due to GDPR issue
+    if (extension.isTelemetryEnabled() && !extension.getCodeServerContext().codeServerEnv) {
+        extension.telemetryReporter.sendTelemetryEvent(eventName, getTelemetryProperties(extension, componentName,
+            customDimensions), measurements);
+    }
+
+}
+
+export async function sendTelemetryAiEvent(extension: BallerinaExtension, eventName: string, componentName: string,
     customDimensions: { [key: string]: string; } = {}, measurements: { [key: string]: number; } = {}) {
     const telemetryProperties = getAiTelemetryProperties(extension, eventName, componentName, customDimensions);
-
     // Save to local JSON file for debugging
     try {
-        saveLocalTelemetryEvent(eventName, telemetryProperties, measurements);
+        saveLocalTelemetryEvent(eventName, await telemetryProperties, measurements);
         console.log(`[Telemetry] Event saved to: ${getTelemetryFilePath()}`);
     } catch (error) {
         console.error('[Telemetry] Failed to save event locally:', error);
     }
-
-    // temporarily disabled in codeserver due to GDPR issue
-    // if (extension.isTelemetryEnabled() && !extension.getCodeServerContext().codeServerEnv) {
-    //     extension.telemetryReporter.sendTelemetryEvent(eventName, getTelemetryProperties(extension, componentName,
-    //         customDimensions), measurements);
-    // }
-
     if (extension.isTelemetryEnabled() && !extension.getCodeServerContext().codeServerEnv) {
-        extension.telemetryReporter.sendTelemetryEvent(eventName, telemetryProperties, measurements);
+        extension.telemetryReporter.sendTelemetryEvent(eventName, await telemetryProperties, measurements);
     }
 }
+
 
 export function sendTelemetryException(extension: BallerinaExtension, error: Error, componentName: string,
     params: { [key: string]: string } = {}) {
@@ -89,17 +93,20 @@ export function getTelemetryProperties(extension: BallerinaExtension, component:
     };
 }
 
-export function getAiTelemetryProperties(extension: BallerinaExtension, eventName: string, component: string, params: { [key: string]: string; } = {})
-    : { [key: string]: string; } {
+export async function getAiTelemetryProperties(extension: BallerinaExtension, eventName: string, component: string, params: { [key: string]: string; } = {})
+    : Promise<{ [key: string]: string; }> {
+    const userProperties = await getUserObject();
     return {
         ...params,
         'ballerina.version': extension ? extension.ballerinaVersion : '',
         'eventName': eventName,
         'component': component,
         'machineId': env.machineId,
-        sessionId: env.sessionId,
+        'sessionId': env.sessionId,
+        'userType': userProperties.Users.userType,
+        'userEmail': userProperties.Users.userEmail,
         'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone,
-    }
+    };
 }
 
 export function getMessageObject(message?: string): { [key: string]: string; } {
