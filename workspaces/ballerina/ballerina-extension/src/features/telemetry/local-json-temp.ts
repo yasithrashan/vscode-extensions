@@ -21,9 +21,15 @@ import * as path from 'path';
 
 interface TelemetryEvent {
     timestamp: string;
+    event: string;
     eventName: string;
     properties: { [key: string]: string };
     measurements?: { [key: string]: number };
+    user?: {
+        userType: string;
+        userEmail: string;
+        loginMethod: string;
+    };
 }
 
 const TELEMETRY_FILE_PATH = path.join(__dirname, '../src/features/telemetry/telemetry-events.json');
@@ -40,11 +46,21 @@ export function saveLocalTelemetryEvent(
     measurements?: { [key: string]: number }
 ): void {
     try {
+        // Extract user-related properties and remove duplicate eventName
+        const { userType, userEmail, loginMethod, eventName: duplicateEventName, ...otherProperties } = properties;
+
+        // Create the event with nested user object
         const event: TelemetryEvent = {
             timestamp: new Date().toISOString(),
+            event: 'ai events',
             eventName,
-            properties,
-            measurements
+            properties: otherProperties,
+            measurements,
+            user: {
+                userType: userType || '',
+                userEmail: userEmail || '',
+                loginMethod: loginMethod || userType || ''
+            }
         };
 
         let events: TelemetryEvent[] = [];

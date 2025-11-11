@@ -66,7 +66,6 @@ export async function sendTelemetryAiEvent(extension: BallerinaExtension, eventN
     }
 }
 
-
 export function sendTelemetryException(extension: BallerinaExtension, error: Error, componentName: string,
     params: { [key: string]: string } = {}) {
     // temporarily disabled in codeserver due to GDPR issue
@@ -105,6 +104,7 @@ export async function getAiTelemetryProperties(extension: BallerinaExtension, ev
         'sessionId': env.sessionId,
         'userType': userProperties.Users.userType,
         'userEmail': userProperties.Users.userEmail,
+        'loginMethod': userProperties.Users.userType,
         'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
 }
