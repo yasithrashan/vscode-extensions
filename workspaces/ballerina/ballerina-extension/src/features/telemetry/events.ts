@@ -122,3 +122,6 @@ export const TM_EVENT_OPEN_REPO_CHANGE_PATH = "vscode.open.repo.change.path";
 export const TM_EVENT_OPEN_REPO_CANCELED = "vscode.open.repo.canceled";
 export const TM_EVENT_OPEN_REPO_NEW_FOLDER = "vscode.open.exist.repo.new.folder";
 export const TM_EVENT_OPEN_REPO_SAME_FOLDER = "vscode.open.exist.repo.same.folder";
+
+// events for Bi Copolot
+export const TM_EVENT_BI_COPILOT_LOGIN = "ballerina.copilot.login";

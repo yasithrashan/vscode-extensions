@@ -19,6 +19,8 @@
 import TelemetryReporter from "vscode-extension-telemetry";
 import { BallerinaExtension } from "../../core";
 import { logTelemetryEventLocally, logTelemetryExceptionLocally } from "./local-telemetry-logger";
+import { getuserProperties } from "./ai-telemetry";
+import { env } from "vscode";
 
 //Ballerina-VSCode-Extention repo key as default
 const DEFAULT_KEY = "3a82b093-5b7b-440c-9aa2-3b8e8e5704e7";
@@ -38,37 +40,45 @@ export function createTelemetryReporter(ext: BallerinaExtension): TelemetryRepor
     return reporter;
 }
 
-export function sendTelemetryEvent(extension: BallerinaExtension, eventName: string, componentName: string,
+export async function sendTelemetryEvent(extension: BallerinaExtension, eventName: string, componentName: string,
     customDimensions: { [key: string]: string; } = {}, measurements: { [key: string]: number; } = {}) {
     // Log telemetry event to local JSON file
     const telemetryProperties = getTelemetryProperties(extension, componentName, customDimensions);
-    logTelemetryEventLocally(eventName, componentName, telemetryProperties, measurements);
+    logTelemetryEventLocally(eventName, componentName, await telemetryProperties, measurements);
 
     // temporarily disabled in codeserver due to GDPR issue
     if (extension.isTelemetryEnabled() && !extension.getCodeServerContext().codeServerEnv) {
-        extension.telemetryReporter.sendTelemetryEvent(eventName, getTelemetryProperties(extension, componentName,
+        extension.telemetryReporter.sendTelemetryEvent(eventName, await getTelemetryProperties(extension, componentName,
             customDimensions), measurements);
     }
 }
 
-export function sendTelemetryException(extension: BallerinaExtension, error: Error, componentName: string,
+export async function sendTelemetryException(extension: BallerinaExtension, error: Error, componentName: string,
     params: { [key: string]: string } = {}) {
     // Log telemetry exception to local JSON file
     const telemetryProperties = getTelemetryProperties(extension, componentName, params);
-    logTelemetryExceptionLocally(error, componentName, telemetryProperties);
+    logTelemetryExceptionLocally(error, componentName, await telemetryProperties);
 
     // temporarily disabled in codeserver due to GDPR issue
     if (extension.isTelemetryEnabled() && !extension.getCodeServerContext().codeServerEnv) {
-        extension.telemetryReporter.sendTelemetryException(error, getTelemetryProperties(extension, componentName,
+        extension.telemetryReporter.sendTelemetryException(error, await getTelemetryProperties(extension, componentName,
             params));
     }
 }
 
-export function getTelemetryProperties(extension: BallerinaExtension, component: string, params: { [key: string]: string; } = {})
-    : { [key: string]: string; } {
+export async function getTelemetryProperties(extension: BallerinaExtension, component: string, params: { [key: string]: string; } = {})
+    : Promise<{[key: string]: string}> {
+
+    // fetch the user properties
+    const userProperties = await getuserProperties();
+
     return {
         ...params,
         'ballerina.version': extension ? extension.ballerinaVersion : '',
+        'userLoginMethod' : userProperties.user.userLoginMethod,
+        'userEmail': userProperties.user.userEmail,
+        'machineId': env.machineId,
+        'sessionId': env.sessionId,
         'scope': component,
         'idpId': process.env.VSCODE_CHOREO_USER_IDP_ID ? process.env.VSCODE_CHOREO_USER_IDP_ID : '',
         'isWSO2User': isWSO2User ? 'true' : 'false',
