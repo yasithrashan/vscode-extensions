@@ -22,6 +22,8 @@ import { generateTest, getDiagnostics } from "../../testGenerator";
 import { CopilotEventHandler, createWebviewEventHandler } from "../event";
 import { AIPanelAbortController } from "../../../../../src/rpc-managers/ai-panel/utils";
 import { getCurrentProjectRoot } from "../../../../utils/project-utils";
+import { extension } from "../../../../BalExtensionContext";
+import { sendTelemetryEvent, TM_EVENT_BI_COPILOT_CODE_GENERATED, CMP_BI_COPILOT_CODE_GENERATED } from "../../../../features/telemetry";
 
 export interface TestPlanResponse {
     testPlan: string;
@@ -218,6 +220,21 @@ export async function generateTestPlanCore(
                         });
                     }
                     eventHandler({ type: "stop", command: Command.Tests });
+
+                    // Track test plan generation completion
+                    const requestId = (params as any).requestId;
+                    if (requestId) {
+                        await sendTelemetryEvent(extension.ballerinaExtInstance,
+                            TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                            CMP_BI_COPILOT_CODE_GENERATED,
+                            {
+                                requestId,
+                                eventType: "test_plan_generated",
+                                command: Command.Tests,
+                                status: "success"
+                            }
+                        );
+                    }
                 } else {
                     eventHandler({
                         type: "content_block",
@@ -245,6 +262,21 @@ export async function generateTestPlan(params: TestPlanGenerationRequest): Promi
     } catch (error) {
         console.error("Error during test plan generation:", error);
         eventHandler({ type: "error", content: getErrorMessage(error) });
+
+        // Track test plan generation failure
+        const requestId = (params as any).requestId;
+        if (requestId) {
+            await sendTelemetryEvent(extension.ballerinaExtInstance,
+                TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                CMP_BI_COPILOT_CODE_GENERATED,
+                {
+                    requestId,
+                    eventType: "test_plan_generated",
+                    command: Command.Tests,
+                    status: "error"
+                }
+            );
+        }
     }
 }
 

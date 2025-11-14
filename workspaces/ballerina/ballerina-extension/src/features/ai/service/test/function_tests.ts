@@ -21,6 +21,8 @@ import { URI } from "vscode-uri";
 import * as fs from "fs";
 import { CopilotEventHandler, createWebviewEventHandler } from "../event";
 import { getCurrentProjectRoot } from "../../../../utils/project-utils";
+import { extension } from "../../../../BalExtensionContext";
+import { sendTelemetryEvent, TM_EVENT_BI_COPILOT_CODE_GENERATED, CMP_BI_COPILOT_CODE_GENERATED } from "../../../../features/telemetry";
 
 // Core function test generation that emits events
 export async function generateFunctionTestsCore(
@@ -112,6 +114,21 @@ export async function generateFunctionTestsCore(
     }
 
     eventHandler({ type: "stop", command: Command.Tests });
+
+    // Track function tests generation completion
+    const requestId = (params as any).requestId;
+    if (requestId) {
+        await sendTelemetryEvent(extension.ballerinaExtInstance,
+            TM_EVENT_BI_COPILOT_CODE_GENERATED,
+            CMP_BI_COPILOT_CODE_GENERATED,
+            {
+                requestId,
+                eventType: "function_tests_generated",
+                command: Command.Tests,
+                status: "success"
+            }
+        );
+    }
 }
 
 // Main public function that uses the default event handler
@@ -122,5 +139,20 @@ export async function generateFunctionTests(params: TestGeneratorIntermediarySta
     } catch (error) {
         console.error("Error during function test generation:", error);
         eventHandler({ type: "error", content: getErrorMessage(error) });
+
+        // Track function tests generation failure
+        const requestId = (params as any).requestId;
+        if (requestId) {
+            await sendTelemetryEvent(extension.ballerinaExtInstance,
+                TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                CMP_BI_COPILOT_CODE_GENERATED,
+                {
+                    requestId,
+                    eventType: "function_tests_generated",
+                    command: Command.Tests,
+                    status: "error"
+                }
+            );
+        }
     }
 }

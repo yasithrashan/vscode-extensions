@@ -38,6 +38,8 @@ import { commands, Uri, window } from "vscode";
 import { CLOSE_AI_PANEL_COMMAND, OPEN_AI_PANEL_COMMAND } from "../../constants";
 import path from "path";
 import { URI } from "vscode-uri";
+import { extension } from "../../../../BalExtensionContext";
+import { sendTelemetryEvent, TM_EVENT_BI_COPILOT_CODE_GENERATED, CMP_BI_COPILOT_CODE_GENERATED } from "../../../../features/telemetry";
 
 // =============================================================================
 // ENHANCED MAIN ORCHESTRATOR FUNCTION
@@ -428,6 +430,21 @@ export async function generateMappingCodeCore(mappingRequest: ProcessMappingPara
     eventHandler({ type: "generated_sources", fileArray: generatedSourceFiles });
     eventHandler({ type: "content_block", content: assistantResponse });
     eventHandler({ type: "stop", command: Command.DataMap });
+
+    // Track mapping code generation completion
+    const requestId = (mappingRequest as any).requestId;
+    if (requestId) {
+        await sendTelemetryEvent(extension.ballerinaExtInstance,
+            TM_EVENT_BI_COPILOT_CODE_GENERATED,
+            CMP_BI_COPILOT_CODE_GENERATED,
+            {
+                requestId,
+                eventType: "mapping_code_generated",
+                command: Command.DataMap,
+                status: "success"
+            }
+        );
+    }
 }
 
 // Main public function that uses the default event handler for mapping generation
@@ -438,6 +455,21 @@ export async function generateMappingCode(mappingRequest: ProcessMappingParamete
     } catch (error) {
         console.error("Error during mapping code generation:", error);
         eventHandler({ type: "error", content: getErrorMessage(error) });
+
+        // Track mapping code generation failure
+        const requestId = (mappingRequest as any).requestId;
+        if (requestId) {
+            await sendTelemetryEvent(extension.ballerinaExtInstance,
+                TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                CMP_BI_COPILOT_CODE_GENERATED,
+                {
+                    requestId,
+                    eventType: "mapping_code_generated",
+                    command: Command.DataMap,
+                    status: "error"
+                }
+            );
+        }
         throw error;
     }
 }
@@ -730,6 +762,21 @@ export async function generateInlineMappingCodeCore(inlineMappingRequest: Metada
     eventHandler({ type: "generated_sources", fileArray: generatedSourceFiles });
     eventHandler({ type: "content_block", content: assistantResponse });
     eventHandler({ type: "stop", command: Command.DataMap });
+
+    // Track inline mapping code generation completion
+    const requestId = (inlineMappingRequest as any).requestId;
+    if (requestId) {
+        await sendTelemetryEvent(extension.ballerinaExtInstance,
+            TM_EVENT_BI_COPILOT_CODE_GENERATED,
+            CMP_BI_COPILOT_CODE_GENERATED,
+            {
+                requestId,
+                eventType: "inline_mapping_code_generated",
+                command: Command.DataMap,
+                status: "success"
+            }
+        );
+    }
 }
 
 // Main public function that uses the default event handler for inline mapping generation
@@ -740,6 +787,21 @@ export async function generateInlineMappingCode(inlineMappingRequest: MetadataWi
     } catch (error) {
         console.error("Error during inline mapping code generation:", error);
         eventHandler({ type: "error", content: getErrorMessage(error) });
+
+        // Track inline mapping code generation failure
+        const requestId = (inlineMappingRequest as any).requestId;
+        if (requestId) {
+            await sendTelemetryEvent(extension.ballerinaExtInstance,
+                TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                CMP_BI_COPILOT_CODE_GENERATED,
+                {
+                    requestId,
+                    eventType: "inline_mapping_code_generated",
+                    command: Command.DataMap,
+                    status: "error"
+                }
+            );
+        }
         throw error;
     }
 }
@@ -783,6 +845,21 @@ export async function generateContextTypesCore(typeCreationRequest: ProcessConte
         // Send assistant response through event handler
         eventHandler({ type: "content_block", content: assistantResponse });
         eventHandler({ type: "stop", command: Command.TypeCreator });
+
+        // Track context types generation completion
+        const requestId = (typeCreationRequest as any).requestId;
+        if (requestId) {
+            await sendTelemetryEvent(extension.ballerinaExtInstance,
+                TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                CMP_BI_COPILOT_CODE_GENERATED,
+                {
+                    requestId,
+                    eventType: "context_types_generated",
+                    command: Command.TypeCreator,
+                    status: "success"
+                }
+            );
+        }
     } catch (error) {
         console.error("Error during context type creation:", error);
         throw error;
@@ -797,6 +874,21 @@ export async function generateContextTypes(typeCreationRequest: ProcessContextTy
     } catch (error) {
         console.error("Error during context type creation:", error);
         eventHandler({ type: "error", content: getErrorMessage(error) });
+
+        // Track context types generation failure
+        const requestId = (typeCreationRequest as any).requestId;
+        if (requestId) {
+            await sendTelemetryEvent(extension.ballerinaExtInstance,
+                TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                CMP_BI_COPILOT_CODE_GENERATED,
+                {
+                    requestId,
+                    eventType: "context_types_generated",
+                    command: Command.TypeCreator,
+                    status: "error"
+                }
+            );
+        }
         throw error;
     }
 }

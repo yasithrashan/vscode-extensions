@@ -644,7 +644,19 @@ export class AiPanelRpcManager implements AIPanelAPI {
     }
 
     async generateOpenAPI(params: GenerateOpenAPIRequest): Promise<void> {
-        await generateOpenAPISpec(params);
+        const requestId = await this.generateRequestId();
+        const paramsWithRequestId = { ...params, requestId } as GenerateOpenAPIRequest;
+        // Send telemetry event
+        await sendTelemetryEvent(extension.ballerinaExtInstance,
+            TM_EVENT_BI_COPILOT_QUERY_SUBMITTED,
+            CMP_BI_COPILOT_QUERY_SUBMITTED,
+            {
+                requestId,
+                eventType: "query_submitted",
+                command: Command.OpenAPI,
+                timestamp: new Date().toISOString()
+            });
+        await generateOpenAPISpec(paramsWithRequestId);
     }
 
     async generateCode(params: GenerateCodeRequest): Promise<void> {
@@ -668,15 +680,51 @@ export class AiPanelRpcManager implements AIPanelAPI {
     }
 
     async generateTestPlan(params: TestPlanGenerationRequest): Promise<void> {
-        await generateTestPlan(params);
+        const requestId = await this.generateRequestId();
+        const paramsWithRequestId = { ...params, requestId } as TestPlanGenerationRequest;
+        // Send telemetry event
+        await sendTelemetryEvent(extension.ballerinaExtInstance,
+            TM_EVENT_BI_COPILOT_QUERY_SUBMITTED,
+            CMP_BI_COPILOT_QUERY_SUBMITTED,
+            {
+                requestId,
+                eventType: "query_submitted",
+                command: Command.Tests,
+                timestamp: new Date().toISOString()
+            });
+        await generateTestPlan(paramsWithRequestId);
     }
 
     async generateFunctionTests(params: TestGeneratorIntermediaryState): Promise<void> {
-        await generateFunctionTests(params);
+        const requestId = await this.generateRequestId();
+        const paramsWithRequestId = { ...params, requestId } as TestGeneratorIntermediaryState;
+        // Send telemetry event
+        await sendTelemetryEvent(extension.ballerinaExtInstance,
+            TM_EVENT_BI_COPILOT_QUERY_SUBMITTED,
+            CMP_BI_COPILOT_QUERY_SUBMITTED,
+            {
+                requestId,
+                eventType: "query_submitted",
+                command: Command.Tests,
+                timestamp: new Date().toISOString()
+            });
+        await generateFunctionTests(paramsWithRequestId);
     }
 
     async generateHealthcareCode(params: GenerateCodeRequest): Promise<void> {
-        await generateHealthcareCode(params);
+        const requestId = await this.generateRequestId();
+        const paramsWithRequestId = { ...params, requestId } as GenerateCodeRequest;
+        // Send telemetry event
+        await sendTelemetryEvent(extension.ballerinaExtInstance,
+            TM_EVENT_BI_COPILOT_QUERY_SUBMITTED,
+            CMP_BI_COPILOT_QUERY_SUBMITTED,
+            {
+                requestId,
+                eventType: "query_submitted",
+                command: Command.Healthcare,
+                timestamp: new Date().toISOString()
+            });
+        await generateHealthcareCode(paramsWithRequestId);
     }
 
     async abortAIGeneration(): Promise<void> {
@@ -705,15 +753,51 @@ export class AiPanelRpcManager implements AIPanelAPI {
     }
 
     async generateMappingCode(params: ProcessMappingParametersRequest): Promise<void> {
-        await generateMappingCode(params);
+        const requestId = await this.generateRequestId();
+        const paramsWithRequestId = { ...params, requestId } as ProcessMappingParametersRequest;
+        // Send telemetry event
+        await sendTelemetryEvent(extension.ballerinaExtInstance,
+            TM_EVENT_BI_COPILOT_QUERY_SUBMITTED,
+            CMP_BI_COPILOT_QUERY_SUBMITTED,
+            {
+                requestId,
+                eventType: "query_submitted",
+                command: Command.DataMap,
+                timestamp: new Date().toISOString()
+            });
+        await generateMappingCode(paramsWithRequestId);
     }
 
     async generateInlineMappingCode(params: MetadataWithAttachments): Promise<void> {
-        await generateInlineMappingCode(params);
+        const requestId = await this.generateRequestId();
+        const paramsWithRequestId = { ...params, requestId } as MetadataWithAttachments;
+        // Send telemetry event
+        await sendTelemetryEvent(extension.ballerinaExtInstance,
+            TM_EVENT_BI_COPILOT_QUERY_SUBMITTED,
+            CMP_BI_COPILOT_QUERY_SUBMITTED,
+            {
+                requestId,
+                eventType: "query_submitted",
+                command: Command.DataMap,
+                timestamp: new Date().toISOString()
+            });
+        await generateInlineMappingCode(paramsWithRequestId);
     }
 
     async generateContextTypes(params: ProcessContextTypeCreationRequest): Promise<void> {
-        await generateContextTypes(params);
+        const requestId = await this.generateRequestId();
+        const paramsWithRequestId = { ...params, requestId } as ProcessContextTypeCreationRequest;
+        // Send telemetry event
+        await sendTelemetryEvent(extension.ballerinaExtInstance,
+            TM_EVENT_BI_COPILOT_QUERY_SUBMITTED,
+            CMP_BI_COPILOT_QUERY_SUBMITTED,
+            {
+                requestId,
+                eventType: "query_submitted",
+                command: Command.TypeCreator,
+                timestamp: new Date().toISOString()
+            });
+        await generateContextTypes(paramsWithRequestId);
     }
 
     async openChatWindowWithCommand(): Promise<void> {

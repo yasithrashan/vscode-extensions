@@ -20,6 +20,8 @@ import { getAnthropicClient, ANTHROPIC_HAIKU, getProviderCacheControl } from "..
 import { getErrorMessage, populateHistory } from "../utils";
 import { CopilotEventHandler, createWebviewEventHandler } from "../event";
 import { AIPanelAbortController } from "../../../../../src/rpc-managers/ai-panel/utils";
+import { extension } from "../../../../BalExtensionContext";
+import { sendTelemetryEvent, TM_EVENT_BI_COPILOT_CODE_GENERATED, CMP_BI_COPILOT_CODE_GENERATED } from "../../../../features/telemetry";
 
 // Core OpenAPI generation function that emits events
 export async function generateOpenAPISpecCore(
@@ -66,6 +68,21 @@ export async function generateOpenAPISpecCore(
             case "finish": {
                 const finishReason = part.finishReason;
                 eventHandler({ type: "stop", command: Command.OpenAPI });
+
+                // Track OpenAPI generation completion
+                const requestId = (params as any).requestId;
+                if (requestId) {
+                    await sendTelemetryEvent(extension.ballerinaExtInstance,
+                        TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                        CMP_BI_COPILOT_CODE_GENERATED,
+                        {
+                            requestId,
+                            eventType: "openapi_generated",
+                            command: Command.OpenAPI,
+                            status: "success"
+                        }
+                    );
+                }
                 break;
             }
         }
@@ -80,6 +97,21 @@ export async function generateOpenAPISpec(params: GenerateOpenAPIRequest): Promi
     } catch (error) {
         console.error("Error during openapi generation:", error);
         eventHandler({ type: "error", content: getErrorMessage(error) });
+
+        // Track OpenAPI generation failure
+        const requestId = (params as any).requestId;
+        if (requestId) {
+            await sendTelemetryEvent(extension.ballerinaExtInstance,
+                TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                CMP_BI_COPILOT_CODE_GENERATED,
+                {
+                    requestId,
+                    eventType: "openapi_generated",
+                    command: Command.OpenAPI,
+                    status: "error"
+                }
+            );
+        }
     }
 }
 

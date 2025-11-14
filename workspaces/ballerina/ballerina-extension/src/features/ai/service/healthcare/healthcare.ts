@@ -41,6 +41,8 @@ import { getProjectSource } from "../../../../rpc-managers/ai-panel/rpc-manager"
 import { CopilotEventHandler, createWebviewEventHandler } from "../event";
 import { AIPanelAbortController } from "../../../../../src/rpc-managers/ai-panel/utils";
 import { stringifyExistingCode } from "../code/code";
+import { extension } from "../../../../BalExtensionContext";
+import { sendTelemetryEvent, TM_EVENT_BI_COPILOT_CODE_GENERATED, CMP_BI_COPILOT_CODE_GENERATED } from "../../../../features/telemetry";
 
 
 // Core healthcare code generation function that emits events
@@ -109,6 +111,21 @@ export async function generateHealthcareCodeCore(
                     break;
                 }
                 eventHandler({ type: "stop", command: Command.Healthcare });
+
+                // Track healthcare code generation completion
+                const requestId = (params as any).requestId;
+                if (requestId) {
+                    await sendTelemetryEvent(extension.ballerinaExtInstance,
+                        TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                        CMP_BI_COPILOT_CODE_GENERATED,
+                        {
+                            requestId,
+                            eventType: "healthcare_code_generated",
+                            command: Command.Healthcare,
+                            status: "success"
+                        }
+                    );
+                }
                 break;
             }
         }
@@ -123,6 +140,21 @@ export async function generateHealthcareCode(params: GenerateCodeRequest): Promi
     } catch (error) {
         console.error("Error during healthcare generation:", error);
         eventHandler({ type: "error", content: getErrorMessage(error) });
+
+        // Track healthcare code generation failure
+        const requestId = (params as any).requestId;
+        if (requestId) {
+            await sendTelemetryEvent(extension.ballerinaExtInstance,
+                TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                CMP_BI_COPILOT_CODE_GENERATED,
+                {
+                    requestId,
+                    eventType: "healthcare_code_generated",
+                    command: Command.Healthcare,
+                    status: "error"
+                }
+            );
+        }
     }
 }
 
