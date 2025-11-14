@@ -268,8 +268,8 @@ export function cleanDiagnosticMessages(entries: DiagnosticEntry[]): DiagnosticE
 // Ask related functions
 
 // Searches documentation and formats the response with reference sources
-export async function searchDocumentation(message: string): Promise<string> {
-    const resp = await getAskResponse(message,);
+export async function searchDocumentation(message: string, requestId?: string): Promise<string> {
+    const resp = await getAskResponse(message, requestId);
     const finalResponse = resp.content.replace(/<thinking>[\s\S]*?<\/thinking>/g, '');
     const referenceSources = resp.references;
     let responseContent: string;

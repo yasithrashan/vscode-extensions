@@ -436,7 +436,18 @@ export class AiPanelRpcManager implements AIPanelAPI {
     async getFromDocumentation(content: string): Promise<string> {
         return new Promise(async (resolve, reject) => {
             try {
-                const response = await searchDocumentation(content);
+                const requestId = await this.generateRequestId();
+                // Send telemetry event for query submission
+                await sendTelemetryEvent(extension.ballerinaExtInstance,
+                    TM_EVENT_BI_COPILOT_QUERY_SUBMITTED,
+                    CMP_BI_COPILOT_QUERY_SUBMITTED,
+                    {
+                        requestId,
+                        eventType: "query_submitted",
+                        command: Command.Ask,
+                        timestamp: new Date().toISOString()
+                    });
+                const response = await searchDocumentation(content, requestId);
                 resolve(response.toString());
             } catch (error) {
                 reject(error);

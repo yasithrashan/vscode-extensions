@@ -23,6 +23,10 @@ import { getAnthropicClient, ANTHROPIC_HAIKU, fetchWithAuth } from "../connectio
 import { z } from 'zod';
 import { tool } from 'ai';
 import { AIPanelAbortController } from "../../../../../src/rpc-managers/ai-panel/utils";
+import { extension } from "../../../../BalExtensionContext";
+import { sendTelemetryEvent } from "../../../../features/telemetry";
+import { TM_EVENT_BI_COPILOT_CODE_GENERATED, CMP_BI_COPILOT_CODE_GENERATED } from "../../../../features/telemetry";
+import { Command } from "@wso2/ballerina-core";
 
 interface Document {
     document: string;
@@ -134,14 +138,14 @@ async function extractCentralApiDocs(query: string): Promise<LibraryWithUrl[]> {
 }
 
 // TODO: Consider structured outputs
-export async function getAskResponse(question: string): Promise<ResponseSchema> {
+export async function getAskResponse(question: string, requestId?: string): Promise<ResponseSchema> {
     try {
         // First, try to get tool calls from Claude
         const toolCallsResponse: ToolCall[] = await getToolCallsFromClaude(question);
-        
+
         let centralContext: ApiDocResult[] = [];
         let documentationContext: Document[] = [];
-        
+
         // Execute the tools if we got tool calls
         if (toolCallsResponse && toolCallsResponse.length > 0) {
             for (const toolCall of toolCallsResponse) {
@@ -202,17 +206,44 @@ export async function getAskResponse(question: string): Promise<ResponseSchema> 
         
         // Clean response
         const filteredResponse = finalResponse.replace(/<doc_id>.*?<\/doc_id>/g, '').trim();
-        
+
         // Format links
         const formattedLinks = libraryLinks.map(link => `<${link}>`);
-        
+
+        // Send telemetry event for successful response generation
+        if (requestId) {
+            await sendTelemetryEvent(extension.ballerinaExtInstance,
+                TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                CMP_BI_COPILOT_CODE_GENERATED,
+                {
+                    requestId,
+                    eventType: "response_generated",
+                    command: Command.Ask,
+                    status: "success"
+                });
+        }
+
         return {
             content: filteredResponse,
             references: formattedLinks
         };
-        
+
     } catch (error) {
         console.error('Error in assistantToolCall:', error);
+
+        // Send telemetry event for error
+        if (requestId) {
+            await sendTelemetryEvent(extension.ballerinaExtInstance,
+                TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                CMP_BI_COPILOT_CODE_GENERATED,
+                {
+                    requestId,
+                    eventType: "response_generated",
+                    command: Command.Ask,
+                    status: "error"
+                });
+        }
+
         throw new Error(`Failed to process question: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
