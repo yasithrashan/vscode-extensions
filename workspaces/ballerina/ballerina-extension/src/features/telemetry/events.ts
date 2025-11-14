@@ -125,3 +125,6 @@ export const TM_EVENT_OPEN_REPO_SAME_FOLDER = "vscode.open.exist.repo.same.folde
 
 // events for Bi Copolot
 export const TM_EVENT_BI_COPILOT_LOGIN = "ballerina.copilot.login";
+export const TM_EVENT_BI_COPILOT_QUERY_SUBMIT = "ballerina.copilot.query.submit";
+export const TM_EVENT_BI_COPILOT_QUERY_SUBMITTED = "ballerina.copilot.query.submitted";
+export const TM_EVENT_BI_COPILOT_CODE_GENERATED = "ballerina.copilot.code.generated";

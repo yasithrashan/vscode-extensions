@@ -381,6 +381,7 @@ export interface GenerateCodeRequest {
     chatHistory: ChatEntry[];
     operationType: OperationType;
     fileAttachmentContents: FileAttatchment[];
+    requestId?: string; // Optional telemetry tracking ID
 }
 
 export interface SourceFiles {

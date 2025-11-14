@@ -44,6 +44,9 @@ import { CopilotEventHandler, createWebviewEventHandler } from "../event";
 import { AIPanelAbortController } from "../../../../../src/rpc-managers/ai-panel/utils";
 import { getRequirementAnalysisCodeGenPrefix, getRequirementAnalysisTestGenPrefix } from "./np_prompts";
 import { createEditExecute, createEditTool, createMultiEditExecute, createBatchEditTool, createReadExecute, createReadTool, createWriteExecute, createWriteTool, FILE_BATCH_EDIT_TOOL_NAME, FILE_READ_TOOL_NAME, FILE_SINGLE_EDIT_TOOL_NAME, FILE_WRITE_TOOL_NAME } from "../libs/text_editor_tool";
+import { extension } from "../../../../BalExtensionContext";
+import { TM_EVENT_BI_COPILOT_CODE_GENERATED, CMP_BI_COPILOT_CODE_GENERATED } from "../../../telemetry";
+import { sendTelemetryEvent } from "../../../telemetry";
 
 const SEARCH_LIBRARY_TOOL_NAME = "LibraryProviderTool";
 
@@ -140,7 +143,7 @@ export async function generateCodeCore(params: GenerateCodeRequest, eventHandler
                     assistantResponse += `\n\n<toolcall>Analyzing request & selecting libraries...</toolcall>`;
                 }
                 else if ([FILE_WRITE_TOOL_NAME, FILE_SINGLE_EDIT_TOOL_NAME, FILE_BATCH_EDIT_TOOL_NAME, FILE_READ_TOOL_NAME].includes(toolName)) {
-                    if(!codeGenStart) {
+                    if (!codeGenStart) {
                         codeGenStart = true;
                         // TODO: temporary solution until this get refactored properly
                         // send this pattern <code\s+filename="([^"]+)"(?:\s+type=("test"|"ai_map"|"ai_map_inline"))?>\s*```(\w+)\s*([\s\S]*?)```\s*<\/code>
@@ -265,6 +268,21 @@ export async function generateCodeCore(params: GenerateCodeRequest, eventHandler
                 eventHandler({ type: "diagnostics", diagnostics: diagnostics });
                 eventHandler({ type: "messages", messages: allMessages });
                 eventHandler({ type: "stop", command: Command.Code });
+
+                // Track code generation completion
+                const requestId = (params as any).requestId;
+                if (requestId) {
+                    const status = diagnostics.length > 0 ? "partial" : "success";
+                    await sendTelemetryEvent(extension.ballerinaExtInstance,
+                        TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                        CMP_BI_COPILOT_CODE_GENERATED,
+                        {
+                            requestId,
+                            eventType: "code_generated",
+                            status
+                        }
+                    );
+                }
                 break;
             }
         }
@@ -298,6 +316,20 @@ export async function generateCode(params: GenerateCodeRequest): Promise<void> {
     } catch (error) {
         console.error("Error during code generation:", error);
         eventHandler({ type: "error", content: getErrorMessage(error) });
+
+        // Track code generation failure
+        const requestId = (params as any).requestId;
+        if (requestId) {
+            await sendTelemetryEvent(extension.ballerinaExtInstance,
+                TM_EVENT_BI_COPILOT_CODE_GENERATED,
+                CMP_BI_COPILOT_CODE_GENERATED,
+                {
+                    requestId,
+                    eventType: "code_generated",
+                    status: "error"
+                }
+            );
+        }
     }
 }
 
@@ -391,11 +423,11 @@ function getUserPrompt(
         fileInstructions = `4. File Upload Contents. : Contents of the file which the user uploaded as additional information for the query.
 
 ${fileUploadContents
-    .map(
-        (file) => `File Name: ${file.fileName}
+                .map(
+                    (file) => `File Name: ${file.fileName}
 Content: ${file.content}`
-    )
-    .join("\n")}`;
+                )
+                .join("\n")}`;
     }
 
     return `QUERY: The query you need to answer.

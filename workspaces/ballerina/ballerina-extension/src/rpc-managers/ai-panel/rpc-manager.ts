@@ -14,7 +14,7 @@
  * KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations
  * under the License.
- * 
+ *
  * THIS FILE INCLUDES AUTO GENERATED CODE
  */
 import {
@@ -75,6 +75,7 @@ import { generateOpenAPISpec } from "../../../src/features/ai/service/openapi/op
 import { AIStateMachine } from "../../../src/views/ai-panel/aiMachine";
 import { extension } from "../../BalExtensionContext";
 import { generateCode, triggerGeneratedCodeRepair } from "../../features/ai/service/code/code";
+import { Command } from "@wso2/ballerina-core";
 import { generateDocumentationForService } from "../../features/ai/service/documentation/doc_generator";
 import { generateHealthcareCode } from "../../features/ai/service/healthcare/healthcare";
 import { selectRequiredFunctions } from "../../features/ai/service/libs/funcs";
@@ -102,6 +103,12 @@ import { AIPanelAbortController, addToIntegration, cleanDiagnosticMessages, isEr
 import { fetchData } from "./utils/fetch-data-utils";
 import { checkToken } from "../../../src/views/ai-panel/utils";
 import { getCurrentProjectRoot } from "../../utils/project-utils";
+import {
+    TM_EVENT_BI_COPILOT_QUERY_SUBMITTED,
+    CMP_BI_COPILOT_QUERY_SUBMITTED,
+} from "../../features/telemetry";
+import { v4 as uuidv4 } from 'uuid';
+import { sendTelemetryEvent } from "../../features/telemetry";
 
 export class AiPanelRpcManager implements AIPanelAPI {
 
@@ -613,6 +620,10 @@ export class AiPanelRpcManager implements AIPanelAPI {
         });
     }
 
+    async generateRequestId(): Promise<string> {
+        return uuidv4();
+    }
+
     async getRelevantLibrariesAndFunctions(params: RelevantLibrariesAndFunctionsRequest): Promise<RelevantLibrariesAndFunctionsResponse> {
         const selectedLibs: string[] = await getSelectedLibraries(params.query, GenerationType.CODE_GENERATION);
         const relevantTrimmedFuncs: Library[] = await selectRequiredFunctions(params.query, selectedLibs, GenerationType.CODE_GENERATION);
@@ -626,7 +637,19 @@ export class AiPanelRpcManager implements AIPanelAPI {
     }
 
     async generateCode(params: GenerateCodeRequest): Promise<void> {
-        await generateCode(params);
+        const requestId = await this.generateRequestId();
+        const paramsWithRequestId = { ...params, requestId } as GenerateCodeRequest;
+        // Send telemetry event
+        await sendTelemetryEvent(extension.ballerinaExtInstance,
+            TM_EVENT_BI_COPILOT_QUERY_SUBMITTED,
+            CMP_BI_COPILOT_QUERY_SUBMITTED,
+            {
+                requestId,
+                eventType: "query_submitted",
+                command: Command.Code,
+                timestamp: new Date().toISOString()
+            });
+        await generateCode(paramsWithRequestId);
     }
 
     async repairGeneratedCode(params: RepairParams): Promise<void> {

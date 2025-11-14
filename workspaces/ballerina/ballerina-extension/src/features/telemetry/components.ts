@@ -48,3 +48,6 @@ export const CMP_OPEN_VSCODE_URL = "component.open.vscode.url";
 
 // events for Bi Copolot
 export const CMP_BI_COPILOT_LOGIN = "component.ballerina.copilot.login";
+export const CMP_BI_COPILOT_QUERY_SUBMIT = "component.ballerina.copilot.query.submit";
+export const CMP_BI_COPILOT_QUERY_SUBMITTED = "component.ballerina.copilot.query.submitted";
+export const CMP_BI_COPILOT_CODE_GENERATED = "component.ballerina.copilot.code.generated";

@@ -1,5 +1,4 @@
 import { getLoginMethod, getBIIntelUserEmail } from "../../utils/ai/auth";
-
 export interface userCredentials {
     user: {
         userLoginMethod: string;
@@ -17,5 +16,4 @@ export async function getuserProperties(): Promise<userCredentials> {
         },
     };
 }
-
 
