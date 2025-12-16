@@ -36,6 +36,13 @@ import { StateMachine } from "../../../stateMachine";
 import { createAgentEventRegistry } from "./stream-handlers/create-agent-event-registry";
 import { StreamContext } from "./stream-handlers/stream-context";
 import { StreamErrorException, StreamAbortException, StreamFinishException } from "./stream-handlers/stream-event-handler";
+import {
+    sendTelemetryEvent,
+    TM_EVENT_BALLERINA_AI_GENERATION_SUBMITTED,
+    CMP_BALLERINA_AI_GENERATION
+} from "../../telemetry";
+import { extension } from "../../../BalExtensionContext";
+import { getProjectMetrics } from "../../telemetry/common/project-metrics";
 
 // ==================================
 // ExecutionContext Factory Functions
@@ -76,6 +83,12 @@ export async function generateAgentCore(
     ctx: ExecutionContext
 ): Promise<string> {
     const messageId = params.messageId;
+
+    // Get AI chat context for telemetry
+    const chatContext = AIChatStateMachine.context();
+
+    // Get project metrics
+    const projectMetrics = await getProjectMetrics();
 
     const tempProjectPath = (await createTempProjectOfWorkspace(ctx)).path;
     const shouldCleanup = !process.env.AI_TEST_ENV;
@@ -136,6 +149,28 @@ export async function generateAgentCore(
     AIChatStateMachine.sendEvent({
         type: AIChatMachineEventType.PLANNING_STARTED
     });
+
+    // Send telemetry event for query submission
+    sendTelemetryEvent(
+        extension.ballerinaExtInstance,
+        TM_EVENT_BALLERINA_AI_GENERATION_SUBMITTED,
+        CMP_BALLERINA_AI_GENERATION,
+        {
+            projectId: chatContext.projectId || 'unknown',
+            messageId: messageId,
+            command: Command.Agent,
+            operationType: params.operationType || 'unknown',
+            isPlanMode: (params.isPlanMode ?? false).toString(),
+            approvalMode: chatContext.autoApproveEnabled ? 'auto' : 'manual',
+            inputFileCount: projectMetrics.fileCount.toString(),
+            inputLineCount: projectMetrics.lineCount.toString(),
+            hasFileAttachments: (params.fileAttachmentContents?.length > 0).toString(),
+            fileAttachmentCount: (params.fileAttachmentContents?.length || 0).toString(),
+            hasCodeContext: (!!params.codeContext).toString(),
+            hasChatHistory: (params.chatHistory?.length > 0).toString(),
+            chatHistoryLength: (params.chatHistory?.length || 0).toString(),
+        }
+    );
 
     eventHandler({ type: "start" });
 
