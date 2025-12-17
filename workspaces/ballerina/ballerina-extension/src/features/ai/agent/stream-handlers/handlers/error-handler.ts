@@ -60,6 +60,7 @@ export class ErrorHandler implements StreamEventHandler {
                 messageId: context.messageId,
                 errorMessage: getErrorMessage(error),
                 errorType: errorObj.name || 'Unknown',
+                errorCode: (error as any)?.code || 'N/A',
                 generationStartTime: context.generationStartTime.toString(),
                 errorTime: errorTime.toString(),
                 durationMs: (errorTime - context.generationStartTime).toString(),

@@ -80,6 +80,7 @@ import { fetchWithAuth } from "../../features/ai/utils/ai-client";
 import { getServiceDeclarationNames } from "../../../src/features/ai/documentation/utils";
 import { getSelectedLibraries } from "../../features/ai/tools/healthcare-library";
 import { OLD_BACKEND_URL, closeAllBallerinaFiles } from "../../features/ai/utils";
+import { submitFeedback as submitFeedbackUtil } from "../../features/ai/utils/feedback";
 import { selectRequiredFunctions } from "../../features/ai/utils/libs/function-registry";
 import { GenerationType } from "../../features/ai/utils/libs/libraries";
 import { Library } from "../../features/ai/utils/libs/library-types";
@@ -530,34 +531,35 @@ export class AiPanelRpcManager implements AIPanelAPI {
     }
 
     async submitFeedback(content: SubmitFeedbackRequest): Promise<boolean> {
-        return new Promise(async (resolve) => {
-            try {
-                const payload = {
-                    feedback: content.feedbackText,
-                    positive: content.positive,
-                    messages: content.messages,
-                    diagnostics: cleanDiagnosticMessages(content.diagnostics)
-                };
+        return await submitFeedbackUtil(content);
+        // return new Promise(async (resolve) => {
+        //     try {
+        //         const payload = {
+        //             feedback: content.feedbackText,
+        //             positive: content.positive,
+        //             messages: content.messages,
+        //             diagnostics: cleanDiagnosticMessages(content.diagnostics)
+        //         };
 
-                const response = await fetchWithAuth(`${OLD_BACKEND_URL}/feedback`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
+        //         const response = await fetchWithAuth(`${OLD_BACKEND_URL}/feedback`, {
+        //             method: 'POST',
+        //             headers: {
+        //                 'Content-Type': 'application/json'
+        //             },
+        //             body: JSON.stringify(payload)
+        //         });
 
-                if (response.ok) {
-                    resolve(true);
-                } else {
-                    console.error("Failed to submit feedback");
-                    resolve(false);
-                }
-            } catch (error) {
-                console.error("Error submitting feedback:", error);
-                resolve(false);
-            }
-        });
+        //         if (response.ok) {
+        //             resolve(true);
+        //         } else {
+        //             console.error("Failed to submit feedback");
+        //             resolve(false);
+        //         }
+        //     } catch (error) {
+        //         console.error("Error submitting feedback:", error);
+        //         resolve(false);
+        //     }
+        // });
     }
 
     async getRelevantLibrariesAndFunctions(params: RelevantLibrariesAndFunctionsRequest): Promise<RelevantLibrariesAndFunctionsResponse> {
