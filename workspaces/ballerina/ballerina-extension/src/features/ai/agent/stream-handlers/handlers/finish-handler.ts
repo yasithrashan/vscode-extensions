@@ -198,6 +198,12 @@ export class FinishHandler implements StreamEventHandler {
         // Get final project metrics from the temp project (generated code)
         const finalProjectMetrics = await getProjectMetrics(context.tempProjectPath);
 
+        // Get token usage information
+        const usageInfo = await context.usage;
+        const inputTokens = usageInfo.inputTokens || 0;
+        const outputTokens = usageInfo.outputTokens || 0;
+        const totalTokens = usageInfo.totalTokens || 0;
+
         // Send telemetry for generation completion
         sendTelemetryEvent(
             extension.ballerinaExtInstance,
@@ -217,6 +223,9 @@ export class FinishHandler implements StreamEventHandler {
                 finalCompilationErrorsAfterGeneration: (finalDiagnostics.diagnostics?.length || 0).toString(),
                 outputFileCount: finalProjectMetrics.fileCount.toString(),
                 outputLineCount: finalProjectMetrics.lineCount.toString(),
+                inputTokens: inputTokens.toString(),
+                outputTokens: outputTokens.toString(),
+                totalTokens: totalTokens.toString(),
             }
         );
 

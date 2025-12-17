@@ -48,4 +48,5 @@ export interface StreamContext {
     generationStartTime: number;
     diagnosticCheckCount: number;
     totalCompilationErrorsDuringGeneration: number;
+    usage: Promise<any>;
 }

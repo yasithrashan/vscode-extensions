@@ -135,7 +135,7 @@ export async function generateAgentCore(
         [DIAGNOSTICS_TOOL_NAME]: createDiagnosticsTool(tempProjectPath),
     };
 
-    const { fullStream, response } = streamText({
+    const { fullStream, response , usage } = streamText({
         model: await getAnthropicClient(ANTHROPIC_SONNET_4),
         maxOutputTokens: 8192,
         temperature: 0,
@@ -191,6 +191,7 @@ export async function generateAgentCore(
         generationStartTime: Date.now(),
         diagnosticCheckCount: 0,
         totalCompilationErrorsDuringGeneration: 0,
+        usage,
     };
 
     // Create event registry
