@@ -23,6 +23,14 @@ import { integrateCodeToWorkspace } from "../../utils";
 import { sendAgentDidCloseForProjects } from "../../../utils/project/ls-schema-notifications";
 import { cleanupTempProject } from "../../../utils/project/temp-project";
 import { updateAndSaveChat } from "../../../utils/events";
+import { workspace } from "vscode";
+import {
+    sendTelemetryEvent,
+    TM_EVENT_BALLERINA_AI_GENERATION_COMPLETED,
+    CMP_BALLERINA_AI_GENERATION
+} from "../../../../telemetry";
+import { extension } from "../../../../../BalExtensionContext";
+import { getProjectMetrics } from "../../../../telemetry/common/project-metrics";
 
 /**
  * Stored context data for code review actions
@@ -181,6 +189,42 @@ export class FinishHandler implements StreamEventHandler {
             type: "diagnostics",
             diagnostics: finalDiagnostics.diagnostics
         });
+
+        // Get state context for telemetry
+        const stateContext = AIChatStateMachine.context();
+        const generationEndTime = Date.now();
+        const isPlanModeEnabled = workspace.getConfiguration('ballerina.ai').get<boolean>('planMode', false);
+
+        // Get final project metrics from the temp project (generated code)
+        const finalProjectMetrics = await getProjectMetrics(context.tempProjectPath);
+
+        // Send telemetry for generation completion
+        sendTelemetryEvent(
+            extension.ballerinaExtInstance,
+            TM_EVENT_BALLERINA_AI_GENERATION_COMPLETED,
+            CMP_BALLERINA_AI_GENERATION,
+            {
+                projectId: stateContext.projectId || 'unknown',
+                messageId: context.messageId,
+                modifiedFilesCount: context.modifiedFiles.length.toString(),
+                generationStartTime: context.generationStartTime.toString(),
+                generationEndTime: generationEndTime.toString(),
+                durationMs: (generationEndTime - context.generationStartTime).toString(),
+                isPlanMode: isPlanModeEnabled.toString(),
+                approvalMode: stateContext.autoApproveEnabled ? 'auto' : 'manual',
+                diagnosticChecksCount: context.diagnosticCheckCount.toString(),
+                totalCompilationErrorsDuringGeneration: context.totalCompilationErrorsDuringGeneration.toString(),
+                finalCompilationErrorsAfterGeneration: (finalDiagnostics.diagnostics?.length || 0).toString(),
+                outputFileCount: finalProjectMetrics.fileCount.toString(),
+                outputLineCount: finalProjectMetrics.lineCount.toString(),
+            }
+        );
+
+        // Integrate code to workspace if not in test mode
+        if (!process.env.AI_TEST_ENV && context.modifiedFiles.length > 0) {
+            const modifiedFilesSet = new Set(context.modifiedFiles);
+            await integrateCodeToWorkspace(context.tempProjectPath, modifiedFilesSet, context.ctx);
+        }
 
         // Store context data for later use by accept/decline/review actions
         // This will be used by RPC methods to access temp project data

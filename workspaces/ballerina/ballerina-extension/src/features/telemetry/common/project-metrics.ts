@@ -22,7 +22,34 @@ export interface ProjectMetrics {
     lineCount: number;
 }
 
-export async function getProjectMetrics(): Promise<ProjectMetrics> {
+export async function getProjectMetrics(workspacePath?: string): Promise<ProjectMetrics> {
+    // If a specific workspace path is provided, use it; otherwise use workspace folders
+    if (workspacePath) {
+        const files = await vscode.workspace.findFiles(
+            new vscode.RelativePattern(workspacePath, '**/*.bal'),
+            new vscode.RelativePattern(workspacePath, '**/target/**')
+        );
+
+        let totalFileCount = 0;
+        let totalLineCount = 0;
+
+        for (const fileUri of files) {
+            try {
+                totalFileCount++;
+                const fileContent = await fs.promises.readFile(fileUri.fsPath, 'utf8');
+                const lineCount = fileContent.split('\n').length;
+                totalLineCount += lineCount;
+            } catch (error) {
+                console.warn(`Failed to read file ${fileUri.fsPath}:`, error);
+            }
+        }
+
+        return {
+            fileCount: totalFileCount,
+            lineCount: totalLineCount
+        };
+    }
+
     const workspaceFolders = vscode.workspace.workspaceFolders;
 
     if (!workspaceFolders || workspaceFolders.length === 0) {

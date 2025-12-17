@@ -188,6 +188,9 @@ export async function generateAgentCore(
         userMessageContent,
         response,
         ctx,
+        generationStartTime: Date.now(),
+        diagnosticCheckCount: 0,
+        totalCompilationErrorsDuringGeneration: 0,
     };
 
     // Create event registry

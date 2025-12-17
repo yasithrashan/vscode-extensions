@@ -27,6 +27,11 @@ import { captureWorkspaceSnapshot, restoreWorkspaceSnapshot } from './checkpoint
 import { getCheckpointConfig } from './checkpoint/checkpointConfig';
 import { notifyCheckpointCaptured } from '../../RPCLayer';
 import { StateMachine } from '../../stateMachine';
+import {
+    sendTelemetryEvent,
+    TM_EVENT_BALLERINA_AI_GENERATION_REVERTED,
+    CMP_BALLERINA_AI_GENERATION
+} from '../../features/telemetry';
 
 // Extracted utilities
 import { generateProjectId, generateSessionId } from './idGenerators';
@@ -99,6 +104,18 @@ const restoreCheckpointAction = (context: AIChatMachineContext, event: any) => {
     context.checkpoints = restoredCheckpoints;
     context.currentPlan = undefined;
     context.currentTaskIndex = -1;
+
+    // Send telemetry when the user clicks the revert button
+    sendTelemetryEvent(
+        extension.ballerinaExtInstance,
+        TM_EVENT_BALLERINA_AI_GENERATION_REVERTED,
+        CMP_BALLERINA_AI_GENERATION,
+        {
+            projectId: context.projectId || 'unknown',
+            messageId: checkpoint.messageId,
+            checkpointId: checkpointId,
+        }
+    );
 
     saveChatState(context);
 

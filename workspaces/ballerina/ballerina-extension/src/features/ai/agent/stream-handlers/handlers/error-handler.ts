@@ -19,6 +19,13 @@ import { StreamContext } from "../stream-context";
 import { getErrorMessage } from "../../../utils/ai-utils";
 import { sendAgentDidCloseForProjects } from "../../../utils/project/ls-schema-notifications";
 import { cleanupTempProject } from "../../../utils/project/temp-project";
+import { AIChatStateMachine } from "../../../../../views/ai-panel/aiChatMachine";
+import {
+    sendTelemetryException,
+    TM_EVENT_BALLERINA_AI_GENERATION_FAILED,
+    CMP_BALLERINA_AI_GENERATION
+} from "../../../../telemetry";
+import { extension } from "../../../../../BalExtensionContext";
 
 /**
  * Handles error events from the stream.
@@ -34,6 +41,30 @@ export class ErrorHandler implements StreamEventHandler {
     async handle(part: any, context: StreamContext): Promise<void> {
         const error = part.error;
         console.error("[Agent] Error:", error);
+
+        // Get state context for telemetry
+        const stateContext = AIChatStateMachine.context();
+        const errorTime = Date.now();
+
+        // Convert error to Error object for telemetry
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+
+        // Send telemetry for generation error
+        sendTelemetryException(
+            extension.ballerinaExtInstance,
+            errorObj,
+            CMP_BALLERINA_AI_GENERATION,
+            {
+                event: TM_EVENT_BALLERINA_AI_GENERATION_FAILED,
+                projectId: stateContext.projectId || 'unknown',
+                messageId: context.messageId,
+                errorMessage: getErrorMessage(error),
+                errorType: errorObj.name || 'Unknown',
+                generationStartTime: context.generationStartTime.toString(),
+                errorTime: errorTime.toString(),
+                durationMs: (errorTime - context.generationStartTime).toString(),
+            }
+        );
 
         if (context.shouldCleanup) {
             sendAgentDidCloseForProjects(context.tempProjectPath, context.projects);

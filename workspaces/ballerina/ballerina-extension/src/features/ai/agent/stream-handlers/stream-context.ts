@@ -43,4 +43,9 @@ export interface StreamContext {
 
     // Execution context (for workspace integration)
     ctx: ExecutionContext;
+
+    // Telemetry tracking
+    generationStartTime: number;
+    diagnosticCheckCount: number;
+    totalCompilationErrorsDuringGeneration: number;
 }

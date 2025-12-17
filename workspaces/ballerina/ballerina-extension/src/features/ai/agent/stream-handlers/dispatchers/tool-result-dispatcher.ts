@@ -120,6 +120,14 @@ export class DiagnosticsResultDispatcher extends BaseToolResultDispatcher {
     readonly supportedTools = [DIAGNOSTICS_TOOL_NAME];
 
     dispatch(part: any, result: any, context: StreamContext): void {
+        // Track diagnostic check count
+        context.diagnosticCheckCount++;
+
+        // Track compilation errors
+        if (result && result.diagnostics && Array.isArray(result.diagnostics)) {
+            context.totalCompilationErrorsDuringGeneration += result.diagnostics.length;
+        }
+
         context.eventHandler({
             type: "tool_result",
             toolName: part.toolName,

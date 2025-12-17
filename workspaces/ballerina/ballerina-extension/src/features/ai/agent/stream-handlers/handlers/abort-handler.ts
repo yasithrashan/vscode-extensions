@@ -21,6 +21,12 @@ import { AIChatStateMachine } from "../../../../../views/ai-panel/aiChatMachine"
 import { sendAgentDidCloseForProjects } from "../../../utils/project/ls-schema-notifications";
 import { cleanupTempProject } from "../../../utils/project/temp-project";
 import { updateAndSaveChat } from "../../../utils/events";
+import {
+    sendTelemetryEvent,
+    TM_EVENT_BALLERINA_AI_GENERATION_ABORTED,
+    CMP_BALLERINA_AI_GENERATION
+} from "../../../../telemetry";
+import { extension } from "../../../../../BalExtensionContext";
 
 /**
  * Handles abort events from the stream.
@@ -57,6 +63,25 @@ export class AbortHandler implements StreamEventHandler {
 Generation stopped by user. The last in-progress task was not saved. Files have been reverted to the previous completed task state. Please redo the last task if needed.
 </abort_notification>`,
         });
+
+        // Get state context for telemetry
+        const stateContext = AIChatStateMachine.context();
+        const abortTime = Date.now();
+
+        // Send telemetry for generation abort
+        sendTelemetryEvent(
+            extension.ballerinaExtInstance,
+            TM_EVENT_BALLERINA_AI_GENERATION_ABORTED,
+            CMP_BALLERINA_AI_GENERATION,
+            {
+                projectId: stateContext.projectId || 'unknown',
+                messageId: context.messageId,
+                generationStartTime: context.generationStartTime.toString(),
+                abortTime: abortTime.toString(),
+                durationMs: (abortTime - context.generationStartTime).toString(),
+                modifiedFilesCount: context.modifiedFiles.length.toString(),
+            }
+        );
 
         if (context.shouldCleanup) {
             sendAgentDidCloseForProjects(context.tempProjectPath, context.projects);
