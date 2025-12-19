@@ -204,6 +204,33 @@ export class FinishHandler implements StreamEventHandler {
         const outputTokens = usageInfo.outputTokens || 0;
         const totalTokens = usageInfo.totalTokens || 0;
 
+        // Extract unique error codes from final diagnostics
+        const finalErrorCodes = [...new Set(
+            (finalDiagnostics.diagnostics || [])
+                .map(d => d.code)
+                .filter(code => code !== undefined)
+        )];
+
+        // Calculate final error code frequency
+        const finalErrorCodeFrequencyMap = new Map<string, number>();
+        (finalDiagnostics.diagnostics || []).forEach(d => {
+            if (d.code) {
+                const currentCount = finalErrorCodeFrequencyMap.get(d.code) || 0;
+                finalErrorCodeFrequencyMap.set(d.code, currentCount + 1);
+            }
+        });
+        const finalErrorCodeFrequency = Array.from(finalErrorCodeFrequencyMap.entries())
+            .map(([code, count]) => `${code}:${count}`)
+            .join(',');
+
+        // Convert error codes collected during generation to array
+        const errorCodesDuringGeneration = Array.from(context.compilationErrorCodesDuringGeneration);
+
+        // Convert error code frequency map to string format: "CODE:COUNT,CODE:COUNT"
+        const errorCodeFrequency = Array.from(context.compilationErrorCodeFrequencyDuringGeneration.entries())
+            .map(([code, count]) => `${code}:${count}`)
+            .join(',');
+
         // Send telemetry for generation completion
         sendTelemetryEvent(
             extension.ballerinaExtInstance,
@@ -220,7 +247,11 @@ export class FinishHandler implements StreamEventHandler {
                 approvalMode: stateContext.autoApproveEnabled ? 'auto' : 'manual',
                 diagnosticChecksCount: context.diagnosticCheckCount.toString(),
                 totalCompilationErrorsDuringGeneration: context.totalCompilationErrorsDuringGeneration.toString(),
+                compilationErrorCodesDuringGeneration: errorCodesDuringGeneration.join(','),
+                compilationErrorCodeFrequencyDuringGeneration: errorCodeFrequency,
                 finalCompilationErrorsAfterGeneration: (finalDiagnostics.diagnostics?.length || 0).toString(),
+                finalCompilationErrorCodes: finalErrorCodes.join(','),
+                finalCompilationErrorCodeFrequency: finalErrorCodeFrequency,
                 outputFileCount: finalProjectMetrics.fileCount.toString(),
                 outputLineCount: finalProjectMetrics.lineCount.toString(),
                 inputTokens: inputTokens.toString(),

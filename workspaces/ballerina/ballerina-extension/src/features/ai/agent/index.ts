@@ -191,6 +191,8 @@ export async function generateAgentCore(
         generationStartTime: Date.now(),
         diagnosticCheckCount: 0,
         totalCompilationErrorsDuringGeneration: 0,
+        compilationErrorCodesDuringGeneration: new Set<string>(),
+        compilationErrorCodeFrequencyDuringGeneration: new Map<string, number>(),
         usage,
     };
 

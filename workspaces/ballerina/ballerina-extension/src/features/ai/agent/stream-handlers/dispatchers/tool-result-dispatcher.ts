@@ -123,9 +123,20 @@ export class DiagnosticsResultDispatcher extends BaseToolResultDispatcher {
         // Track diagnostic check count
         context.diagnosticCheckCount++;
 
-        // Track compilation errors
+        // Track compilation errors and error codes
         if (result && result.diagnostics && Array.isArray(result.diagnostics)) {
             context.totalCompilationErrorsDuringGeneration += result.diagnostics.length;
+
+            // Collect unique error codes and their frequencies during generation
+            result.diagnostics.forEach((diagnostic: any) => {
+                if (diagnostic.code) {
+                    context.compilationErrorCodesDuringGeneration.add(diagnostic.code);
+
+                    // Track frequency of each error code
+                    const currentCount = context.compilationErrorCodeFrequencyDuringGeneration.get(diagnostic.code) || 0;
+                    context.compilationErrorCodeFrequencyDuringGeneration.set(diagnostic.code, currentCount + 1);
+                }
+            });
         }
 
         context.eventHandler({

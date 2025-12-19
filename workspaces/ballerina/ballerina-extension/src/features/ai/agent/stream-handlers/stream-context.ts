@@ -48,5 +48,7 @@ export interface StreamContext {
     generationStartTime: number;
     diagnosticCheckCount: number;
     totalCompilationErrorsDuringGeneration: number;
+    compilationErrorCodesDuringGeneration: Set<string>;
+    compilationErrorCodeFrequencyDuringGeneration: Map<string, number>;
     usage: Promise<any>;
 }
