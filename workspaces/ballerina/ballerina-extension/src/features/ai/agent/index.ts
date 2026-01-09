@@ -36,6 +36,7 @@ import { StateMachine } from "../../../stateMachine";
 import { createAgentEventRegistry } from "./stream-handlers/create-agent-event-registry";
 import { StreamContext } from "./stream-handlers/stream-context";
 import { StreamErrorException, StreamAbortException, StreamFinishException } from "./stream-handlers/stream-event-handler";
+import { generateArtifactsMarkdown } from "../../../utils/artifacts-md-generator";
 
 // ==================================
 // ExecutionContext Factory Functions
@@ -84,6 +85,14 @@ export async function generateAgentCore(
     const projects: ProjectSource[] = await getProjectSource(params.operationType, ctx);
     // Send didOpen for all initial project files
     sendAgentDidOpenForProjects(tempProjectPath, projectPath, projects);
+
+    // Generate project artifacts markdown file
+    try {
+        await generateArtifactsMarkdown(projectPath, StateMachine.langClient());
+    } catch (error) {
+        console.error("Failed to generate project artifacts markdown:", error);
+        // Don't fail the entire operation if markdown generation fails
+    }
 
     const historyMessages = populateHistoryForAgent(params.chatHistory);
 
