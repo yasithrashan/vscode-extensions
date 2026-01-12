@@ -1,10 +1,9 @@
 /**
  * Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com) All Rights Reserved.
  *
- * WSO2 LLC. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -28,7 +27,7 @@ import {
 import { ExtendedLangClient } from "../core/extended-language-client";
 
 /**
- * Interface for the file-grouped artifacts
+ * Interface for file-grouped artifacts
  */
 interface FileArtifacts {
     fileName: string;
@@ -55,7 +54,7 @@ export async function generateArtifactsMarkdown(
         const projectArtifacts = await langClient.getProjectArtifacts({ projectPath });
 
         if (!projectArtifacts || !projectArtifacts.artifacts) {
-            console.warn("No artifacts found for project:", projectPath);
+            console.warn("generateArtifactsMarkdown: No artifacts found for project:", projectPath);
             return;
         }
 
@@ -64,13 +63,18 @@ export async function generateArtifactsMarkdown(
             artifacts: projectArtifacts.artifacts
         };
 
+        // Save projectArtifacts to JSON file
+        const jsonOutputPath = path.join(projectPath, 'project-artifacts.json');
+        fs.writeFileSync(jsonOutputPath, JSON.stringify(projectArtifacts, null, 2), 'utf8');
+        console.log(`generateArtifactsMarkdown: Project artifacts saved to: ${jsonOutputPath}`);
+
         const markdown = generateMarkdownFromArtifacts(artifactsNotification);
         const outputPath = path.join(projectPath, 'bal.md');
 
         fs.writeFileSync(outputPath, markdown, 'utf8');
-        console.log(`Code map generated at: ${outputPath}`);
+        console.log(`generateArtifactsMarkdown: Code map generated at: ${outputPath}`);
     } catch (error) {
-        console.error("Error generating artifacts markdown:", error);
+        console.error("generateArtifactsMarkdown: Error generating artifacts markdown:", error);
         throw error;
     }
 }
@@ -86,8 +90,8 @@ export function generateMarkdownFromArtifacts(
 
     const fileArtifactsMap = groupArtifactsByFile(artifacts, projectPath);
 
-    let markdown = `# Code Structure Overview\n\n`;
-    markdown += `Comprehensive overview of project structure, artifacts, and code organization across all source files.\n\n`;
+    let markdown = `# Ballerina Project Code Map\n\n`;
+    markdown += `> **Note:** This is an auto-generated file using the Ballerina Language Server. **Do not modify manually.**\n\n`;
     markdown += `*Project Path:* ${projectPath}\n\n`;
     markdown += `---\n\n`;
 
@@ -96,7 +100,7 @@ export function generateMarkdownFromArtifacts(
     );
 
     for (const fileArtifact of sortedFiles) {
-        markdown += generateFileMarkdown(fileArtifact, projectPath);
+        markdown += generateFileMarkdown(fileArtifact);
     }
 
     return markdown;
@@ -111,10 +115,23 @@ function groupArtifactsByFile(
 ): Map<string, FileArtifacts> {
     const fileMap = new Map<string, FileArtifacts>();
 
+    const artifactTypeToKey: Record<string, keyof Omit<FileArtifacts, 'fileName' | 'filePath'>> = {
+        [ARTIFACT_TYPE.Configurations]: 'configurations',
+        [ARTIFACT_TYPE.Types]: 'types',
+        [ARTIFACT_TYPE.Variables]: 'variables',
+        [ARTIFACT_TYPE.Functions]: 'functions',
+        [ARTIFACT_TYPE.Listeners]: 'listeners',
+        [ARTIFACT_TYPE.EntryPoints]: 'entryPoints',
+        [ARTIFACT_TYPE.Connections]: 'connections',
+        [ARTIFACT_TYPE.DataMappers]: 'dataMappers',
+        [ARTIFACT_TYPE.NaturalFunctions]: 'naturalFunctions'
+    };
+
     const addToFileMap = (
         artifact: BaseArtifact,
         category: keyof Omit<FileArtifacts, 'fileName' | 'filePath'>
     ) => {
+        if (!artifact.location) return; // defensive
         const fileName = artifact.location.fileName;
         const filePath = path.join(projectPath, fileName);
 
@@ -137,61 +154,30 @@ function groupArtifactsByFile(
         fileMap.get(fileName)![category].push(artifact);
     };
 
-    if (artifacts[ARTIFACT_TYPE.Configurations]) {
-        Object.values(artifacts[ARTIFACT_TYPE.Configurations])
-            .forEach(a => addToFileMap(a as BaseArtifact, 'configurations'));
-    }
-
-    if (artifacts[ARTIFACT_TYPE.Types]) {
-        Object.values(artifacts[ARTIFACT_TYPE.Types])
-            .forEach(a => addToFileMap(a as BaseArtifact, 'types'));
-    }
-
-    if (artifacts[ARTIFACT_TYPE.Variables]) {
-        Object.values(artifacts[ARTIFACT_TYPE.Variables])
-            .forEach(a => addToFileMap(a as BaseArtifact, 'variables'));
-    }
-
-    if (artifacts[ARTIFACT_TYPE.Functions]) {
-        Object.values(artifacts[ARTIFACT_TYPE.Functions])
-            .forEach(a => addToFileMap(a as BaseArtifact, 'functions'));
-    }
-
-    if (artifacts[ARTIFACT_TYPE.Listeners]) {
-        Object.values(artifacts[ARTIFACT_TYPE.Listeners])
-            .forEach(a => addToFileMap(a as BaseArtifact, 'listeners'));
-    }
-
-    if (artifacts[ARTIFACT_TYPE.EntryPoints]) {
-        Object.values(artifacts[ARTIFACT_TYPE.EntryPoints])
-            .forEach(a => addToFileMap(a as BaseArtifact, 'entryPoints'));
-    }
-
-    if (artifacts[ARTIFACT_TYPE.Connections]) {
-        Object.values(artifacts[ARTIFACT_TYPE.Connections])
-            .forEach(a => addToFileMap(a as BaseArtifact, 'connections'));
-    }
-
-    if (artifacts[ARTIFACT_TYPE.DataMappers]) {
-        Object.values(artifacts[ARTIFACT_TYPE.DataMappers])
-            .forEach(a => addToFileMap(a as BaseArtifact, 'dataMappers'));
-    }
-
-    if (artifacts[ARTIFACT_TYPE.NaturalFunctions]) {
-        Object.values(artifacts[ARTIFACT_TYPE.NaturalFunctions])
-            .forEach(a => addToFileMap(a as BaseArtifact, 'naturalFunctions'));
+    for (const [artifactType, key] of Object.entries(artifactTypeToKey)) {
+        if (artifacts[artifactType]) {
+            Object.values(artifacts[artifactType]).forEach(a => addToFileMap(a as BaseArtifact, key));
+        }
     }
 
     return fileMap;
 }
 
 /**
+ * Sort artifacts by start line safely
+ */
+function sortArtifactsByStartLine(artifacts: BaseArtifact[]): BaseArtifact[] {
+    return artifacts.slice().sort((a, b) => {
+        const aLine = a.location?.startLine?.line ?? 0;
+        const bLine = b.location?.startLine?.line ?? 0;
+        return aLine - bLine;
+    });
+}
+
+/**
  * Generate markdown for a single file
  */
-function generateFileMarkdown(
-    fileArtifact: FileArtifacts,
-    projectPath: string
-): string {
+function generateFileMarkdown(fileArtifact: FileArtifacts): string {
     const fileName = path.basename(fileArtifact.filePath);
     const relativePath = path.relative(process.cwd(), fileArtifact.filePath);
     let markdown = `## File: ${fileName}\n_Path:_ \`${relativePath}\`\n\n`;
@@ -199,11 +185,11 @@ function generateFileMarkdown(
     const renderList = (title: string, items: BaseArtifact[], suffix = '') => {
         if (items.length === 0) return '';
         let block = `### ${title}\n\n`;
-        items
-            .sort((a, b) => a.location.startLine.line - b.location.startLine.line)
-            .forEach(a => {
-                block += `- **${a.name}${suffix}** (lines ${a.location.startLine.line}-${a.location.endLine.line})\n`;
-            });
+        sortArtifactsByStartLine(items).forEach(a => {
+            const start = a.location?.startLine?.line ?? '?';
+            const end = a.location?.endLine?.line ?? '?';
+            block += `- **${a.name}${suffix}** (lines ${start}-${end})\n`;
+        });
         return block + `\n`;
     };
 
@@ -218,12 +204,21 @@ function generateFileMarkdown(
 
     if (fileArtifact.entryPoints.length > 0) {
         markdown += `### Entry Points\n\n`;
-        fileArtifact.entryPoints
-            .sort((a, b) => a.location.startLine.line - b.location.startLine.line)
-            .forEach(a => markdown += generateEntryPointMarkdown(a));
+        sortArtifactsByStartLine(fileArtifact.entryPoints).forEach(a => markdown += generateEntryPointMarkdown(a));
     }
 
     return markdown + `---\n\n`;
+}
+
+/**
+ * Normalize resource path to standard REST format
+ */
+function normalizeResourcePath(resourceName: string): string {
+    return resourceName
+        .replace(/\[string\s+(\w+)\]/g, '{$1}')
+        .replace(/\[int\s+(\w+)\]/g, '{$1}')
+        .replace(/\[(\w+)\s+(\w+)\]/g, '{$2}')
+        .replace(/\\\-/g, '-'); // Handle escaped hyphens
 }
 
 /**
@@ -232,45 +227,55 @@ function generateFileMarkdown(
 function generateEntryPointMarkdown(artifact: BaseArtifact): string {
     let markdown = '';
 
-    if (artifact.type === DIRECTORY_MAP.SERVICE) {
-        markdown += `#### ${artifact.name} (lines ${artifact.location.startLine.line}-${artifact.location.endLine.line})\n\n`;
+    if (!artifact.location) return markdown;
 
-        if (artifact.module) {
-            markdown += `**Module:** ${artifact.module}\n\n`;
-        }
+    const start = artifact.location.startLine?.line ?? '?';
+    const end = artifact.location.endLine?.line ?? '?';
+
+    if (artifact.type === DIRECTORY_MAP.SERVICE) {
+        markdown += `#### ${artifact.name} (lines ${start}-${end})\n`;
+        if (artifact.module) markdown += `_Module:_ \`${artifact.module}\`\n\n`;
 
         if (artifact.children && Object.keys(artifact.children).length > 0) {
-            markdown += `**Resources:**\n\n`;
+            const children = Object.values(artifact.children);
+            const serviceFunctions: BaseArtifact[] = [];
+            const resourceFunctions: BaseArtifact[] = [];
 
-            // Extract service base path from artifact name (e.g., "HTTP Service - /api/v1/orders")
-            const servicePathMatch = artifact.name.match(/- (.+)$/);
-            const basePath = servicePathMatch ? servicePathMatch[1] : '';
+            children.forEach(child => {
+                if (child.type === DIRECTORY_MAP.RESOURCE || child.accessor) {
+                    resourceFunctions.push(child);
+                } else {
+                    serviceFunctions.push(child);
+                }
+            });
 
-            Object.values(artifact.children)
-                .sort((a, b) => a.location.startLine.line - b.location.startLine.line)
-                .forEach(r => {
-                    const method = (r.accessor ?? '').toUpperCase();
-                    const resourcePath = r.name;
-
-                    // Convert resource path to URL format (e.g., "[string orderId]" -> "{orderId}")
-                    let formattedPath = resourcePath.replace(/\[string\s+(\w+)\]/g, '{$1}');
-
-                    // Build full path
-                    const fullPath = formattedPath === '.' ? basePath : `${basePath}/${formattedPath}`;
-
-                    markdown += `- **${method} ${fullPath}**  \n`;
-                    markdown += `  _raw:_ \`${resourcePath}\`\n\n`;
+            if (serviceFunctions.length > 0) {
+                markdown += `#### Service Functions\n`;
+                sortArtifactsByStartLine(serviceFunctions).forEach(func => {
+                    const s = func.location?.startLine?.line ?? '?';
+                    const e = func.location?.endLine?.line ?? '?';
+                    markdown += `- **${func.name}()** (lines ${s}-${e})\n`;
                 });
-        }
+                markdown += `\n`;
+            }
 
-        markdown += `\n`;
+            if (resourceFunctions.length > 0) {
+                markdown += `#### Resource Functions\n`;
+                sortArtifactsByStartLine(resourceFunctions).forEach(resource => {
+                    const method = (resource.accessor ?? '').toUpperCase();
+                    const resourcePath = normalizeResourcePath(resource.name);
+                    const s = resource.location?.startLine?.line ?? '?';
+                    const e = resource.location?.endLine?.line ?? '?';
+                    markdown += `- **${method}** \`/${resourcePath}\` (lines ${s}-${e})\n`;
+                });
+                markdown += `\n`;
+            }
+        }
     }
 
     if (artifact.type === DIRECTORY_MAP.AUTOMATION) {
-        markdown += `#### Automation (lines ${artifact.location.startLine.line}-${artifact.location.endLine.line})\n\n`;
-        if (artifact.module) {
-            markdown += `**Module:** ${artifact.module}\n\n`;
-        }
+        markdown += `#### Automation (lines ${start}-${end})\n\n`;
+        if (artifact.module) markdown += `_Module:_ \`${artifact.module}\`\n\n`;
     }
 
     return markdown;
@@ -289,4 +294,3 @@ export function saveMarkdownToFile(
     fs.writeFileSync(filePath, markdown, 'utf8');
     return { markdown, filePath };
 }
-
