@@ -30,10 +30,11 @@ import { StreamContext } from './stream-handlers/stream-context';
 import { checkCompilationErrors } from './tools/diagnostics-utils';
 import { updateAndSaveChat } from '../utils/events';
 import { chatStateStorage } from '../../../views/ai-panel/chatStateStorage';
-import { openView } from '../../../stateMachine';
+import { openView, StateMachine } from '../../../stateMachine';
 import { RPCLayer } from '../../../RPCLayer';
 import { VisualizerWebview } from '../../../views/visualizer/webview';
 import * as path from 'path';
+import * as fs from 'fs';
 
 /**
  * Determines which packages have been affected by analyzing modified files
@@ -70,7 +71,7 @@ function determineAffectedPackages(
         for (const project of projects) {
             if (project.packagePath === "") {
                 // Root package in workspace (edge case)
-                if (!modifiedFile.includes('/') || 
+                if (!modifiedFile.includes('/') ||
                     !projects.some(p => p.packagePath && modifiedFile.startsWith(p.packagePath + '/'))) {
                     // Root package is at the temp project path directly
                     affectedPackages.add(tempProjectPath);
@@ -80,7 +81,7 @@ function determineAffectedPackages(
                 }
             } else {
                 // Package with a specific path in workspace
-                if (modifiedFile.startsWith(project.packagePath + '/') || 
+                if (modifiedFile.startsWith(project.packagePath + '/') ||
                     modifiedFile === project.packagePath) {
                     // Map to temp package path: tempProjectPath + relative package path
                     const tempPackagePath = path.join(tempProjectPath, project.packagePath);
@@ -143,6 +144,18 @@ export class AgentExecutor extends AICommandExecutor<GenerateAgentCodeRequest> {
                 params.operationType,
                 this.config.executionContext
             );
+
+            // Debug: Fetch and save codemap as JSON
+            try {
+                const langClient = StateMachine.langClient();
+                const projectPath = this.config.executionContext.projectPath;
+                const codeMap = await langClient.getCodeMap({ projectPath });
+                const codeMapProjectPath = path.join(projectPath, 'codemap-debug.json');
+                fs.writeFileSync(codeMapProjectPath, JSON.stringify(codeMap, null, 2), 'utf-8');
+                console.log(`[AgentExecutor] CodeMap saved to: ${codeMapProjectPath}`);
+            } catch (error) {
+                console.warn('[AgentExecutor] Failed to fetch codemap for debugging:', error);
+            }
 
             // 2. Send didOpen only if creating NEW temp (not reusing for review continuation)
             if (!this.config.lifecycle?.existingTempPath) {
